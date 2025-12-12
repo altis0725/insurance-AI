@@ -1,5 +1,6 @@
 import { eq, desc, like, and, sql, gte, lte } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertUser, users, recordings, extractionResults, changeHistory, reminders, intentTemplates, intentDocuments, complianceResults, InsertRecording, InsertExtractionResult, InsertChangeHistory, InsertReminder, InsertIntentTemplate, InsertComplianceResult, ExtractionData, ComplianceData } from "../drizzle/schema";
 
 // ... existing code ...
@@ -21,8 +22,8 @@ export async function createComplianceResult(data: InsertComplianceResult) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(complianceResults).values(data);
-  return result[0].insertId;
+  const result = await db.insert(complianceResults).values(data).returning({ insertedId: complianceResults.id });
+  return result[0].insertedId;
 }
 
 export async function updateComplianceResult(id: number, data: Partial<InsertComplianceResult>) {
@@ -39,7 +40,8 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL);
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -100,7 +102,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -211,8 +214,8 @@ export async function createRecording(data: InsertRecording) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(recordings).values(data);
-  return result[0].insertId;
+  const result = await db.insert(recordings).values(data).returning({ insertedId: recordings.id });
+  return result[0].insertedId;
 }
 
 export async function updateRecording(id: number, data: Partial<InsertRecording>) {
@@ -239,8 +242,8 @@ export async function createExtractionResult(data: InsertExtractionResult) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(extractionResults).values(data);
-  return result[0].insertId;
+  const result = await db.insert(extractionResults).values(data).returning({ insertedId: extractionResults.id });
+  return result[0].insertedId;
 }
 
 export async function updateExtractionResult(id: number, data: Partial<InsertExtractionResult>) {
@@ -266,8 +269,8 @@ export async function createChangeHistory(data: InsertChangeHistory) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(changeHistory).values(data);
-  return result[0].insertId;
+  const result = await db.insert(changeHistory).values(data).returning({ insertedId: changeHistory.id });
+  return result[0].insertedId;
 }
 
 // ========== Seed Mock Data ==========
@@ -515,8 +518,8 @@ export async function createReminder(data: InsertReminder) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(reminders).values(data);
-  return result[0].insertId;
+  const result = await db.insert(reminders).values(data).returning({ insertedId: reminders.id });
+  return result[0].insertedId;
 }
 
 export async function updateReminder(id: number, data: Partial<InsertReminder>) {
@@ -563,8 +566,8 @@ export async function createIntentTemplate(data: InsertIntentTemplate) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(intentTemplates).values(data);
-  return result[0].insertId;
+  const result = await db.insert(intentTemplates).values(data).returning({ insertedId: intentTemplates.id });
+  return result[0].insertedId;
 }
 
 export async function updateIntentTemplate(id: number, data: Partial<InsertIntentTemplate>) {
@@ -618,8 +621,8 @@ export async function createIntentDocument(data: typeof intentDocuments.$inferIn
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(intentDocuments).values(data);
-  return result[0].insertId;
+  const result = await db.insert(intentDocuments).values(data).returning({ insertedId: intentDocuments.id });
+  return result[0].insertedId;
 }
 
 // ========== Seed Default Template ==========
